@@ -53,6 +53,7 @@ func (s WSServer) ServeUsers(w http.ResponseWriter, r *http.Request) {
 	if (err != nil) {
 		log.Println(err)
 	}
+	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Write(out)
 }
 
@@ -170,6 +171,6 @@ func (s WSServer) sendError(conn *websocket.Conn, err error) {
 	wsjson.Write(s.ctx, conn, &msg)
 }
 func (s WSServer) sendLoginSuccess(conn *websocket.Conn, username string) {
-	msg := WSMessage{Topic: "login", Message: "logged in successfully", Username: username}
+	msg := WSMessage{Topic: "login_success", Message: "logged in successfully", Username: username}
 	wsjson.Write(s.ctx, conn, &msg)
 }
