@@ -5,7 +5,7 @@ tmp_dir = "tmp"
 [build]
   args_bin = []
   bin = "./main"
-  cmd = "build:server"
+  cmd = "yarn build:server"
   delay = 0
   exclude_dir = ["public", "dist", "node_modules", "testdata", "client"]
   exclude_file = []
