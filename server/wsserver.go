@@ -15,20 +15,20 @@ import (
 
 type WSServer struct {
 	conns map[*websocket.Conn]WSUser
-	ctx context.Context
+	ctx   context.Context
 }
 
-type WSUser struct{
-	tag int
-	logged bool
-	connected bool
-	username string
+type WSUser struct {
+	tag          int
+	logged       bool
+	connected    bool
+	username     string
 	FullUsername string `json:"fullUsername"`
 }
 
-type WSMessage struct{
-	Topic string `json:"topic"`
-	Message string `json:"message"`
+type WSMessage struct {
+	Topic    string `json:"topic"`
+	Message  string `json:"message"`
 	Username string `json:"username,omitempty"`
 }
 
@@ -37,7 +37,7 @@ func (s WSServer) ServeWS(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		fmt.Println("Error while accepting connection")
 	}
-	tag:=len(s.conns) + 1
+	tag := len(s.conns) + 1
 	s.conns[c] = WSUser{connected: true, username: "", tag: tag, FullUsername: ""}
 	log.Printf("%s has entered the room and is tagged as %d", r.RemoteAddr, tag)
 	s.ctx = r.Context()
@@ -50,7 +50,7 @@ func (s WSServer) ServeWS(w http.ResponseWriter, r *http.Request) {
 func (s WSServer) ServeUsers(w http.ResponseWriter, r *http.Request) {
 	users := filterLoggedUsers(s.conns, true)
 	out, err := json.Marshal(users)
-	if (err != nil) {
+	if err != nil {
 		log.Println(err)
 	}
 	w.Header().Set("Access-Control-Allow-Origin", "*")
@@ -60,17 +60,17 @@ func (s WSServer) ServeUsers(w http.ResponseWriter, r *http.Request) {
 func filterLoggedUsers(users map[*websocket.Conn]WSUser, logged bool) []WSUser {
 	loggedUsers := []WSUser{}
 	for _, user := range users {
-		if (user.logged == logged) {
+		if user.logged == logged {
 			loggedUsers = append(loggedUsers, user)
 		}
 	}
 	return loggedUsers
 }
 
-func (s WSServer) readLoop(conn *websocket.Conn, channel chan <- error) {
+func (s WSServer) readLoop(conn *websocket.Conn, channel chan<- error) {
 	for {
 		data, err := s.read(conn)
-		
+
 		mustClose := websocket.CloseStatus(err) > -1
 		if mustClose {
 			log.Printf("Websocket closed with code: %v", websocket.CloseStatus(err))
@@ -79,23 +79,23 @@ func (s WSServer) readLoop(conn *websocket.Conn, channel chan <- error) {
 			close(channel)
 			break
 		}
-		if (err != nil ) {
+		if err != nil {
 			s.sendError(conn, err)
 			continue
 		}
 
 		err = s.handleMsg(conn, *data)
-		if (err != nil) {
+		if err != nil {
 			s.sendError(conn, err)
 			continue
 		}
 	}
 }
 
-func (s WSServer) handleMsg(c *websocket.Conn, msg WSMessage) (error) {
+func (s WSServer) handleMsg(c *websocket.Conn, msg WSMessage) error {
 	var err error = nil
 	user, found := s.conns[c]
-	if (!found) {
+	if !found {
 		return errors.New("user not found")
 	}
 
@@ -103,9 +103,9 @@ func (s WSServer) handleMsg(c *websocket.Conn, msg WSMessage) (error) {
 	case "login":
 		err = s.login(c, msg.Message, user.logged)
 	case "chat":
-		if (user.logged) {
-			msg.Username = user.FullUsername;
-			err = s.broadCast(c, msg)
+		if user.logged {
+			msg.Username = user.FullUsername
+			err = s.broadCast(msg)
 		} else {
 			err = errors.New("this user is not logged in")
 		}
@@ -115,7 +115,7 @@ func (s WSServer) handleMsg(c *websocket.Conn, msg WSMessage) (error) {
 	return err
 }
 
-func (s WSServer) broadCast(c *websocket.Conn, msg WSMessage) (error) {
+func (s WSServer) broadCast(msg WSMessage) error {
 	var err error = nil
 	for conn, user := range s.conns {
 		loggedIn := user.logged
@@ -127,10 +127,10 @@ func (s WSServer) broadCast(c *websocket.Conn, msg WSMessage) (error) {
 	return err
 }
 
-func (s *WSServer) login(conn *websocket.Conn, username string, alreadyLogged bool) (error) {
+func (s *WSServer) login(conn *websocket.Conn, username string, alreadyLogged bool) error {
 	user, connected := s.conns[conn]
-	
-	if (!connected) {
+
+	if !connected {
 		return errors.New("connection not found")
 	}
 
@@ -140,18 +140,20 @@ func (s *WSServer) login(conn *websocket.Conn, username string, alreadyLogged bo
 
 	s.conns[conn] = user
 	s.sendLoginSuccess(conn, username)
+	loggedMsg := WSMessage{Topic: "login_user", Username: user.FullUsername}
+	s.broadCast(loggedMsg)
 	return nil
 }
 
-func (s *WSServer) logout(conn *websocket.Conn) (error) {
+func (s *WSServer) logout(conn *websocket.Conn) error {
 	user, connected := s.conns[conn]
 
-	if (!connected) {
+	if !connected {
 		return errors.New("connection not found")
 	}
-
 	user.logged = false
-
+	loggedMsg := WSMessage{Topic: "logout_user", Username: user.FullUsername}
+	s.broadCast(loggedMsg)
 	s.conns[conn] = user
 	return nil
 }

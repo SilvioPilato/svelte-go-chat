@@ -1,6 +1,6 @@
 <script lang="ts">
     export let onLoginSubmit: (username: string) => void;
-    let currentUsername;
+    let currentUsername: string;
 
     let onSubmit = () => {
         onLoginSubmit(currentUsername);
@@ -12,7 +12,7 @@
     <h1 class="text-3xl">Chat login</h1>
     <form on:submit|preventDefault={onSubmit} class="h-32 flex flex-col items-center justify-evenly">
         <input
-          class="h-8 w-56 border pl-2 rounded-sm "
+          class="h-8 w-56 border pl-2 rounded-sm"
           type="text" 
           name="login-text" 
           id="login-text"
